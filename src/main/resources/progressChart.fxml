@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+
+<?import javafx.scene.layout.FlowPane?>
+<ScrollPane prefHeight="393.0" prefWidth="419.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1">
+    <content>
+        <FlowPane>
+            <children>
+                <LineChart title="Scores" animated="false" fx:id="scoreLineChart" id="scoreLineChart" minWidth="900" prefWidth="1500" minHeight="450">
+                    <xAxis>
+                        <CategoryAxis label="Time/s" animated="false"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis label="Scores" animated="false"/>
+                    </yAxis>
+                </LineChart>
+
+                <LineChart title="Scores" animated="false" fx:id="fitnessScoreLineChart" id="scoreLineChart" minWidth="900" prefWidth="1500" minHeight="450">
+                    <xAxis>
+                        <CategoryAxis label="Time/s" animated="false"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis label="Scores" animated="false"/>
+                    </yAxis>
+                </LineChart>
+            </children>
+        </FlowPane>
+    </content>
+</ScrollPane>
