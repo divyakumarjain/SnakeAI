@@ -4,9 +4,9 @@ import org.divy.ai.snake.model.Position
 import org.divy.ai.snake.model.engine.DecisionEngine
 import org.divy.ai.snake.model.engine.RegeneratableDecisionEngine
 import org.divy.ai.snake.model.food.FoodEvent
-import org.divy.ai.snake.model.game.Event
-import org.divy.ai.snake.model.game.EventType
-import org.divy.ai.snake.model.game.GameBoardModel
+import org.divy.ai.snake.model.game.*
+import org.divy.ai.snake.model.snake.event.SnakeDeadEvent
+import org.divy.ai.snake.model.snake.event.SnakeMoveCompleted
 import kotlin.collections.ArrayList
 import kotlin.math.floor
 import kotlin.math.pow
@@ -16,8 +16,7 @@ class SnakeModel(private val brain: DecisionEngine
                  , private val board: GameBoardModel
                  , headPosition: Position = Position(
         (Math.random() * board.boardWidth).toLong(),
-        (Math.random() * board.boardHeight).toLong())
-) {
+        (Math.random() * board.boardHeight).toLong())) {
     var score: Long = 0
     var lifeLeft = 200 //amount of moves the snake can make before it dies
     var lifetime = 0 //amount of time the snake has been alive
@@ -26,16 +25,17 @@ class SnakeModel(private val brain: DecisionEngine
     private var xVel = 0
     private var yVel = 0
 
-    private var decision : FloatArray = FloatArray(4) //snakes decision
-
     var head: SnakeHeadModel = SnakeHeadModel(headPosition)
     var body: ArrayList<Position> = ArrayList() //snakes body
 
     val vision: SnakeVision = SnakeVision(this, board)
 
+    private val eventRegistry: EventRegistry = EventRegistry(board.eventRegistry)
+
     private fun bodyCollide(x: Long, y: Long): Boolean {  //check if a position collides with the snakes body
         for (i in body.indices) {
             if (x == body[i].x && y == body[i].y) {
+                println("Eaten My own body at $i")
                 return true
             }
         }
@@ -50,21 +50,32 @@ class SnakeModel(private val brain: DecisionEngine
         return board.isOutSideBoard(x,y)
     }
 
-    fun move() {  //move the snake
+    fun thinkAndMove() {  //move the snake
+        val observations = vision.observations()
+        val decision = think(observations)
+        move(decision)
+        raiseEvent(SnakeMoveCompleted(this, observations))
+    }
+
+    private fun move() {
         if (!dead) {
             lifetime++
             lifeLeft--
-            if (foodCollide(head.position)) {
-                eat()
-            }
+
             shiftBody()
 
             dead = wallCollide(head.position.x, head.position.y)
                     || bodyCollide(head.position.x, head.position.y)
                     || isStarved()
-        }
-        if(dead) {
-            raiseEvent(SnakeDeadEvent(this))
+
+            if (foodCollide(head.position)) {
+                eat()
+            }
+
+
+            if (dead) {
+                raiseEvent(SnakeDeadEvent(this))
+            }
         }
     }
 
@@ -88,7 +99,7 @@ class SnakeModel(private val brain: DecisionEngine
     }
 
     private fun raiseEvent(event: Event) {
-        board.raiseEvent(event)
+        eventRegistry.raiseEvent(event)
     }
 
     private fun adjustLifeLeft() {
@@ -134,64 +145,44 @@ class SnakeModel(private val brain: DecisionEngine
         }
     }
 
-    fun calculateFitness(): Double {  //calculate the fitness of the snake
+    fun calculateFitness(): Double {  //calculateReward the fitness of the snake
 
         var fitness: Double
         if (score < 10) {
             fitness = floor(lifetime.toDouble() * lifetime) * 2.0.pow(score.toDouble())
         } else {
-            fitness = floor(lifetime.toDouble() * lifetime)
-            fitness *= 2.0.pow(10)
-            fitness *= (score - 9).toFloat()
+            fitness = floor(lifetime.toDouble() * lifetime) * 2.0.pow(10) * (score - 9).toFloat()
         }
 
         return fitness
     }
 
-    fun look() {  //look in all 8 directions and check for food, body and wall
-        vision.look()
+    private fun think(observations: SnakeObservationModel): SnakeAction {
+        return brain.output(observations)
     }
 
-    fun think() {  //think about what direction to move
-        decision = brain.output(vision)
-        var maxIndex = 0
-        var max = 0f
-        for (i in decision.indices) {
-            if (decision[i] > max) {
-                max = decision[i]
-                maxIndex = i
-            }
-        }
-        when (maxIndex) {
-            0 -> moveUp()
-            1 -> moveDown()
-            2 -> moveLeft()
-            3 -> moveRight()
-        }
-    }
-
-    fun moveUp() {
+    private fun moveUp() {
         if (yVel != 1) {
             xVel = 0
             yVel = -1
         }
     }
 
-    fun moveDown() {
+    private fun moveDown() {
         if (yVel != -1) {
             xVel = 0
             yVel = 1
         }
     }
 
-    fun moveLeft() {
+    private fun moveLeft() {
         if (xVel != 1) {
             xVel = -1
             yVel = 0
         }
     }
 
-    fun moveRight() {
+    private fun moveRight() {
         if (xVel != -1) {
             xVel = 1
             yVel = 0
@@ -207,9 +198,18 @@ class SnakeModel(private val brain: DecisionEngine
         return false
     }
 
-    fun clone(): SnakeModel {
+    fun move(action: SnakeAction) {
+        when (action) {
+            SnakeAction.UP -> moveUp()
+            SnakeAction.DOWN -> moveDown()
+            SnakeAction.LEFT -> moveLeft()
+            SnakeAction.RIGHT -> moveRight()
+        }
+        move()
+    }
 
-        return SnakeModel(brain, board)
+    fun addEventListener(type:EventType, listener: GameEventListener) {
+        eventRegistry.addEventListener(type, listener)
     }
 }
 

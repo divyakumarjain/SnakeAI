@@ -40,10 +40,18 @@ class GameBoardAnimationTimer(private val graphicsContext: GraphicsContext
             snakeModel.lifeLeft / 500.0,
             1.0
         )
+
+        val headColor = Color.GREEN.deriveColor(
+            0.0,
+            1.0,
+            snakeModel.lifeLeft / 250.0,
+            1.0
+        )
+
         for (bodyPosition in snakeModel.body) {
             paintRectangle(bodyPosition, bodyColor)
         }
-        paintRectangle(snakeModel.head.position, bodyColor)
+        paintRectangle(snakeModel.head.position, headColor)
     }
 
     private fun paintFood() {
@@ -87,10 +95,10 @@ class GameBoardAnimationTimer(private val graphicsContext: GraphicsContext
         graphicsContext.fill = paint
         graphicsContext.lineWidth = 2.0
         graphicsContext.fillRect(
-            position.x.toDouble() * cellResolution,
-            position.y.toDouble() * cellResolution,
-            cellResolution,
-            cellResolution
+            position.x.toDouble() * cellResolution+1,
+            position.y.toDouble() * cellResolution+1,
+            cellResolution-1,
+            cellResolution-1
         )
     }
 
@@ -104,13 +112,13 @@ class GameBoardAnimationTimer(private val graphicsContext: GraphicsContext
     private val topLeft = Position(-1, -1)
 
     private fun traceVisionInDirection(snake: SnakeModel, direction: Position) {
-        var pos = snake.vision.body.head.position
+        var pos = snake.head.position
 
         pos = pos.add(direction)
 
         while (!gameModel.isOutSideBoard(pos)) {
 
-            if (gameModel.isFoodDroppedAt(pos) || snake.vision.body.hasBodyAtPosition(pos)) {
+            if (gameModel.isFoodDroppedAt(pos) || snake.hasBodyAtPosition(pos)) {
                 return
             } else {
                 graphicsContext.lineWidth = 1.0

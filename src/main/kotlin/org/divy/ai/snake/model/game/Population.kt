@@ -26,25 +26,6 @@ internal class Population(
     }
 
 
-    fun done(): Boolean {  //check if all the snakes in the population are dead
-        for (i in snakes.indices) {
-            if (!snakes[i].dead)
-                return false
-        }
-        return true
-    }
-
-    fun update() {  //update all the snakes in the generation
-        for (i in snakes.indices) {
-            if (!snakes[i].dead) {
-                snakes[i].look()
-                snakes[i].think()
-                snakes[i].move()
-            }
-        }
-    }
-
-
     fun naturalSelection(): SnakeModel {
         val couple = parentSelector.selectCouple(snakes)
         val child: SnakeModel = couple.first.crossover(couple.second)

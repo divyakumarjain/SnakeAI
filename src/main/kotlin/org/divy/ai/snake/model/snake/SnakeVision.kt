@@ -3,67 +3,135 @@ package org.divy.ai.snake.model.snake
 import org.divy.ai.snake.model.game.GameBoardModel
 import org.divy.ai.snake.model.Position
 
-class SnakeVision (val body: SnakeModel, val board: GameBoardModel)  {
+class SnakeVision (val snake: SnakeModel?, val board: GameBoardModel)  {
 
     val vision: FloatArray = FloatArray(24)
 
-    fun see() : FloatArray{
-        return vision //snakes vision
+    enum class ObjectType(val value: Int) {
+        FOOD(0),
+        BODY(1),
+        WALL(2)
     }
 
-    fun look() {
-        var temp = lookInDirection(Position(-1, 0))
-        vision[0] = temp[0]
-        vision[1] = temp[1]
-        vision[2] = temp[2]
-        temp = lookInDirection(Position(-1, -1))
-        vision[3] = temp[0]
-        vision[4] = temp[1]
-        vision[5] = temp[2]
-        temp = lookInDirection(Position(0, -1))
-        vision[6] = temp[0]
-        vision[7] = temp[1]
-        vision[8] = temp[2]
-        temp = lookInDirection(Position(1, -1))
-        vision[9] = temp[0]
-        vision[10] = temp[1]
-        vision[11] = temp[2]
-        temp = lookInDirection(Position(1, 0))
-        vision[12] = temp[0]
-        vision[13] = temp[1]
-        vision[14] = temp[2]
-        temp = lookInDirection(Position(1, 1))
-        vision[15] = temp[0]
-        vision[16] = temp[1]
-        vision[17] = temp[2]
-        temp = lookInDirection(Position(0, 1))
-        vision[18] = temp[0]
-        vision[19] = temp[1]
-        vision[20] = temp[2]
-        temp = lookInDirection(Position(-1, 1))
-        vision[21] = temp[0]
-        vision[22] = temp[1]
-        vision[23] = temp[2]
+    enum class Direction(val value: Int, val relativePosition: Position) {
+        LEFT(0, Position(-1, 0)),
+        LEFT_UP(1, Position(-1, -1)),
+        UP(2, Position(0, -1)),
+        RIGHT_UP(3, Position(1, -1)),
+        RIGHT(4, Position(1, 0)),
+        RIGHT_DOWN(5, Position(1, 1)),
+        DOWN(6, Position(0, 1)),
+        LEFT_DOWN(7, Position(-1, 1))
     }
 
-    fun lookInDirection(direction: Position): FloatArray {  //look in a direction and check for food, body and wall
+    fun observations(): SnakeObservationModel {
+        return if(snake!= null) {
+            observationFrom(fromPosition = snake.head.position
+                , snake = snake
+                , board = board)
+        } else {
+            SnakeObservationModel()
+        }
+    }
+
+    fun observationFrom(
+        fromPosition: Position,
+        snake: SnakeModel,
+        board: GameBoardModel
+    ): SnakeObservationModel {
+        val left = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.LEFT.relativePosition)
+        val leftDown = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.LEFT_DOWN.relativePosition)
+        val down = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.DOWN.relativePosition)
+        val right = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.RIGHT.relativePosition)
+        val leftUp = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.LEFT_UP.relativePosition)
+        val rightDown = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.RIGHT_DOWN.relativePosition)
+        val rightUp = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.RIGHT_UP.relativePosition)
+        val up = lookInDirectionFrom(fromPosition=fromPosition,
+            snake = snake,
+            board = board,
+            direction = Direction.UP.relativePosition)
+
+
+        val foodObservation = DirectionalObservation(
+            left = left[ObjectType.FOOD.value]
+            , leftDown = leftDown[ObjectType.FOOD.value]
+            , down = down[ObjectType.FOOD.value]
+            , right = right[ObjectType.FOOD.value]
+            , leftUp = leftUp[ObjectType.FOOD.value]
+            , rightDown = rightDown[ObjectType.FOOD.value]
+            , rightUp = rightUp[ObjectType.FOOD.value]
+            , up = up[ObjectType.FOOD.value]
+        )
+        val bodyObservation = DirectionalObservation(
+            left = left[ObjectType.BODY.value]
+            , leftDown = leftDown[ObjectType.BODY.value]
+            , down = down[ObjectType.BODY.value]
+            , right = right[ObjectType.BODY.value]
+            , leftUp = leftUp[ObjectType.BODY.value]
+            , rightDown = rightDown[ObjectType.BODY.value]
+            , rightUp = rightUp[ObjectType.BODY.value]
+            , up = up[ObjectType.BODY.value]
+        )
+        val wallObservation = DirectionalObservation(
+            left = left[ObjectType.WALL.value]
+            , leftDown = leftDown[ObjectType.WALL.value]
+            , down = down[ObjectType.WALL.value]
+            , right = right[ObjectType.WALL.value]
+            , leftUp = leftUp[ObjectType.WALL.value]
+            , rightDown = rightDown[ObjectType.WALL.value]
+            , rightUp = rightUp[ObjectType.WALL.value]
+            , up = up[ObjectType.WALL.value]
+        )
+        return SnakeObservationModel(
+            foodObservation = foodObservation
+            , bodyObservation = bodyObservation
+            , wallObservation = wallObservation
+        )
+    }
+
+    private fun lookInDirectionFrom(
+        fromPosition: Position,
+        direction: Position,
+        snake: SnakeModel,
+        board: GameBoardModel
+    ): FloatArray {
+        var pos1 = fromPosition
         val look = FloatArray(3)
-        var pos = body.head.position
-        var distance = 0f
+        var distance = 1f
         var foodFound = false
         var bodyFound = false
-        pos = pos.add(direction)
-        distance += 1f
-        while (!board.isOutSideBoard(pos)) {
-            if (!foodFound && board.isFoodDroppedAt(pos)) {
+        pos1 = pos1.add(direction)
+        while (!board.isOutSideBoard(pos1)) {
+            if (!foodFound && board.isFoodDroppedAt(pos1)) {
                 foodFound = true
-                look[0] = 1f
+                look[ObjectType.FOOD.value] = 1f/distance
             }
-            if (!bodyFound && body.hasBodyAtPosition(pos)) {
+            if (!bodyFound && snake.hasBodyAtPosition(pos1)) {
                 bodyFound = true
-                look[1] = 1f
+                look[ObjectType.BODY.value] = 1f/distance
             }
-            pos = pos.add(direction)
+            pos1 = pos1.add(direction)
             distance += 1f
         }
         look[2] = 1 / distance

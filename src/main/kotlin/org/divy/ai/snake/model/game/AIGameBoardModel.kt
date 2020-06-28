@@ -5,7 +5,7 @@ import org.divy.ai.snake.model.snake.SnakeModel
 import org.divy.ai.snake.model.engine.NeuralNetDecisionEngine
 import org.divy.ai.snake.model.food.RandomFoodDropper
 import org.divy.ai.snake.model.game.factory.SnakeFactory
-import org.divy.ai.snake.model.snake.SnakeDeadEvent
+import org.divy.ai.snake.model.snake.event.SnakeDeadEvent
 import java.lang.Math.random
 
 class AIGameBoardModel(boardWidth: Long, boardHeight: Long, snakes: MutableList<SnakeModel>)
@@ -26,16 +26,14 @@ class AIGameBoardModel(boardWidth: Long, boardHeight: Long, snakes: MutableList<
         addSnake(population.snakes)
 
         addEventListener(EventType.SNAKE_DEAD, object: GameEventListener {
-            override fun handle(event: Event) {
+            override fun handleEvent(event: Event) {
                 if(event is SnakeDeadEvent){
-                    internalSnakes.remove(event.snakeModel)
-                    internalSnakes.add(population.naturalSelection())
+                    snakes.remove(event.snakeModel)
+                    snakes.add(population.naturalSelection())
                 }
             }
 
         })
-
-
 
         super.start()
     }

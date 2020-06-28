@@ -8,9 +8,9 @@ import org.divy.ai.snake.model.game.events.StartGameEvent
 import kotlinx.coroutines.*
 import org.divy.ai.snake.model.food.FoodEvent
 
-open class GameBoardModel(val boardWidth: Long
-                          , val boardHeight: Long
-                          , protected val internalSnakes: MutableList<SnakeModel>
+open class GameBoardModel(val boardWidth: Long = 20
+                          , val boardHeight: Long = 20
+                          , val snakes: MutableList<SnakeModel> = ArrayList()
                           , var score: Long = 1) {
 
     var highestFitness: Double = 0.0
@@ -18,8 +18,8 @@ open class GameBoardModel(val boardWidth: Long
     var lowScore: Long = 0
     var highScore: Long = 0
     var averageScore: Double = 0.0
-    private val eventRegistry: GameEventRegistry = GameEventRegistry()
-    protected val internalFoodList: ArrayList<FoodModel> = ArrayList()
+    val eventRegistry: EventRegistry = EventRegistry()
+    val internalFoodList: ArrayList<FoodModel> = ArrayList()
 
     lateinit var foodDropper: FoodDropper
 
@@ -28,27 +28,33 @@ open class GameBoardModel(val boardWidth: Long
             return internalFoodList.toList()
         }
 
-    val snakes: List<SnakeModel>
-        get() {
-            return internalSnakes.toList()
-        }
+    fun addFood(food:FoodModel) {
+        internalFoodList.add(food)
+    }
 
     open fun start() {
-        raiseEvent(StartGameEvent())
+        initializeForStart()
+        runGameLoop()
+    }
+
+    fun initializeForStart() {
         addEventListener(EventType.FOOD_EATEN, object : GameEventListener {
-            override fun handle(event: Event) {
-                if(event is FoodEvent && EventType.FOOD_EATEN == event.type) {
-                    for(food in internalFoodList) {
-                        if(food.pos == event.position) {
+            override fun handleEvent(event: Event) {
+                if (event is FoodEvent && EventType.FOOD_EATEN == event.type) {
+                    for (food in internalFoodList) {
+                        if (food.pos == event.position) {
                             internalFoodList.remove(food)
                             break;
                         }
                     }
-                    foodDropper.drop()?.let {internalFoodList.add(it)}
+                    foodDropper.drop()?.let { internalFoodList.add(it) }
                 }
             }
-        } )
+        })
+        raiseEvent(StartGameEvent())
+    }
 
+    private fun runGameLoop() {
         GlobalScope.launch {
             var hasLivingSnake = true
 
@@ -56,59 +62,61 @@ open class GameBoardModel(val boardWidth: Long
 
                 var delayInMillis = 0L
 
-                if(averageScore < 100 ) {
+                if (averageScore < 100) {
                     delayInMillis = (10 - averageScore * 10).toLong()
                 }
 
                 delay(delayInMillis)
 
-                hasLivingSnake = false
-                var scoreTotal = 0L
-                var currentHighScore = 0L
-                var currentLowScore = Long.MAX_VALUE
-                var currentTotalFitness = 0.0
-                var currentHighestFitness = 0.0
-
-                val unMutableSnakes : List<SnakeModel> = snakes.toList()
-
-                for (snake in unMutableSnakes) {
-                    snake.think()
-                    snake.move()
-
-                    hasLivingSnake = hasLivingSnake || (!snake.dead)
-
-                    if(snake.score > currentHighScore) {
-                        currentHighScore = snake.score
-                    }
-
-                    if(snake.score < currentLowScore) {
-                        currentLowScore = snake.score
-                    }
-
-                    scoreTotal += snake.score
-                    val calculateFitness = snake.calculateFitness()
-
-                    if(calculateFitness > currentHighestFitness) {
-                        currentHighestFitness = calculateFitness
-                    }
-
-                    currentTotalFitness += calculateFitness
-                }
-                averageScore = scoreTotal.toDouble()/ snakes.size
-                averageFitness = currentTotalFitness / snakes.size
-                highScore = currentHighScore
-                lowScore = currentLowScore
-                highestFitness = currentHighestFitness
+                hasLivingSnake = snakes.map {
+                    it.thinkAndMove()
+                    !it.dead
+                }.fold(false, { a,b -> a || b})
             }
         }
     }
 
+    fun updateScores() {
+        var scoreTotal = 0L
+        var currentHighScore = 0L
+        var currentLowScore = Long.MAX_VALUE
+        var currentTotalFitness = 0.0
+        var currentHighestFitness = 0.0
+
+        val unMutableSnakes: List<SnakeModel> = snakes.toList()
+
+        for (snake in unMutableSnakes) {
+
+            if (snake.score > currentHighScore) {
+                currentHighScore = snake.score
+            }
+
+            if (snake.score < currentLowScore) {
+                currentLowScore = snake.score
+            }
+
+            scoreTotal += snake.score
+            val calculateFitness = snake.calculateFitness()
+
+            if (calculateFitness > currentHighestFitness) {
+                currentHighestFitness = calculateFitness
+            }
+
+            currentTotalFitness += calculateFitness
+        }
+        averageScore = scoreTotal.toDouble() / snakes.size
+        averageFitness = currentTotalFitness / snakes.size
+        highScore = currentHighScore
+        lowScore = currentLowScore
+        highestFitness = currentHighestFitness
+    }
+
     fun addSnake(snakeModel: SnakeModel) {
-        internalSnakes.add(snakeModel)
+        snakes.add(snakeModel)
     }
 
     fun addSnake(newSnakes: java.util.ArrayList<SnakeModel>) {
-        internalSnakes.addAll(newSnakes)
+        snakes.addAll(newSnakes)
     }
 
     fun isOutSideBoard(x: Long, y: Long): Boolean {
@@ -138,10 +146,12 @@ open class GameBoardModel(val boardWidth: Long
 
     fun isFoodDroppedAt(pos: Position): Boolean {
         for (food in internalFoodList) {
-            if (food?.pos == pos)
+            if (food.pos == pos)
                 return true
         }
 
         return false
     }
+
+    fun hasLiveSnake() = snakes.map { !it.dead }.fold(false, {result, next ->  result || next})
 }

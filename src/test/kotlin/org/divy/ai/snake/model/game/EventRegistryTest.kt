@@ -5,15 +5,14 @@ import org.divy.ai.snake.model.food.FoodEvent
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
-import org.mockito.Mockito.mock
 
-class GameEventRegistryTest {
+class EventRegistryTest {
 
-    private lateinit var registry: GameEventRegistry
+    private lateinit var registry: EventRegistry
 
     @BeforeEach
     fun setup() {
-        registry = GameEventRegistry()
+        registry = EventRegistry()
     }
 
     @Test
@@ -27,7 +26,7 @@ class GameEventRegistryTest {
         val event = FoodEvent(EventType.FOOD_EATEN, Position(0L,0L))
         registry.raiseEvent(event)
         // Then
-        Mockito.verify(gameEventListener).handle(event)
+        Mockito.verify(gameEventListener).handleEvent(event)
     }
 
     private inline fun <reified GameEventListener: Any> mockEventListener() = Mockito.mock(GameEventListener::class.java)

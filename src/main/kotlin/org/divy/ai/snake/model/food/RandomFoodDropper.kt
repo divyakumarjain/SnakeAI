@@ -6,7 +6,7 @@ import org.divy.ai.snake.model.game.Event
 import org.divy.ai.snake.model.game.EventType
 import java.lang.Math.random
 
-class RandomFoodDropper (private val boardModel: GameBoardModel): FoodDropper {
+class RandomFoodDropper(private val boardModel: GameBoardModel): FoodDropper {
     override fun drop(): FoodModel {
         var pos = generateRandomPosition()
         while (!boardModel.isEmptyPosition(pos)) {

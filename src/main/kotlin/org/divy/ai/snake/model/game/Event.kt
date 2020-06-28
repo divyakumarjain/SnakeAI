@@ -10,5 +10,7 @@ enum class EventType {
     START_GAME,
     NAVIGATION,
     FOOD_DROPPED,
-    SNAKE_DEAD
+    SNAKE_DEAD,
+    SNAKE_MOVE_COMPLETED,
+    EPISODE_COMPLETED
 }

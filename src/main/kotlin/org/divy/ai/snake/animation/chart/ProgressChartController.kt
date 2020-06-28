@@ -5,14 +5,22 @@ import javafx.fxml.FXML
 import javafx.scene.chart.LineChart
 import javafx.scene.chart.XYChart
 import javafx.scene.chart.XYChart.Series
+import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
+import org.divy.ai.snake.model.game.Event
+import org.divy.ai.snake.model.game.EventType
 import org.divy.ai.snake.model.game.GameBoardModel
+import org.divy.ai.snake.model.game.GameEventListener
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 
-class ProgressChartController(private val gameModel: GameBoardModel) {
+class ProgressChartController(private val gameModel: GameBoardModel) : GameEventListener {
+
+    init {
+        gameModel.addEventListener(EventType.EPISODE_COMPLETED,this)
+    }
 
     @FXML
     var scoreLineChart: LineChart<String, Number>? = null
@@ -42,21 +50,13 @@ class ProgressChartController(private val gameModel: GameBoardModel) {
 
         fitnessScoreLineChart?.data?.add(averageFitnessScoreSeries)
         fitnessScoreLineChart?.data?.add(highestFitnessScoreSeries)
-
-        val scheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
-
-        // put dummy data onto graph per second
-
-        // put dummy data onto graph per second
-        scheduledExecutorService.scheduleAtFixedRate({
-            // Update the chart
-            Platform.runLater {
-                updateData()
-            }
-        }, 0, 1, TimeUnit.SECONDS)
     }
 
     fun updateData() {
+        updateData(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))
+    }
+
+    fun updateData(xAxisValue: String) {
 
         cleanUpSeries(averageScoreSeries)
         cleanUpSeries(highScoreSeries)
@@ -64,34 +64,31 @@ class ProgressChartController(private val gameModel: GameBoardModel) {
         cleanUpSeries(averageFitnessScoreSeries)
         cleanUpSeries(highestFitnessScoreSeries)
 
-        val currentTimeStamp = LocalDateTime.now().format(
-            DateTimeFormatter.ofPattern("HH:mm:ss")
-        )
         averageScoreSeries.data.add(
             XYChart.Data<String?, Number?>(
-                currentTimeStamp, gameModel.averageScore
+                xAxisValue, gameModel.averageScore
             )
         )
         highScoreSeries.data.add(
             XYChart.Data<String?, Number?>(
-                currentTimeStamp, gameModel.highScore
+                xAxisValue, gameModel.highScore
             )
         )
         lowScoreSeries.data.add(
             XYChart.Data<String?, Number?>(
-                currentTimeStamp, gameModel.lowScore
+                xAxisValue, gameModel.lowScore
             )
         )
 
         averageFitnessScoreSeries.data.add(
             XYChart.Data<String?, Number?>(
-                currentTimeStamp, gameModel.averageFitness
+                xAxisValue, gameModel.averageFitness
             )
         )
 
         highestFitnessScoreSeries.data.add(
             XYChart.Data<String?, Number?>(
-                currentTimeStamp, gameModel.highestFitness
+                xAxisValue, gameModel.highestFitness
             )
         )
     }
@@ -101,5 +98,9 @@ class ProgressChartController(private val gameModel: GameBoardModel) {
             series.data.removeAt(0)
     }
 
-
+    override fun handleEvent(event: Event) {
+        if(event is EpisodeCompleted) {
+            updateData(event.episode.toString())
+        }
+    }
 }

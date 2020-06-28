@@ -8,6 +8,7 @@ class HumanGameBoardModel(boardWidth: Long, boardHeight: Long) : GameBoardModel(
 
     override fun start() {
         foodDropper = RandomFoodDropper(this)
+        foodDropper.drop()
         val humanDecisionEngine = HumanDecisionEngine()
         addSnake(SnakeModel(humanDecisionEngine, this))
 

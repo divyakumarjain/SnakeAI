@@ -4,38 +4,32 @@ import javafx.scene.input.KeyCode
 import org.divy.ai.snake.model.game.Event
 import org.divy.ai.snake.model.game.GameEventListener
 import org.divy.ai.snake.model.game.events.NavigationEvent
-import org.divy.ai.snake.model.snake.SnakeVision
+import org.divy.ai.snake.model.snake.SnakeAction
+import org.divy.ai.snake.model.snake.SnakeObservationModel
 
 class HumanDecisionEngine : DecisionEngine, GameEventListener {
 
-    val decision = FloatArray(4)
+    private var decision: SnakeAction = SnakeAction.RIGHT
 
-    override fun output(vision: SnakeVision): FloatArray {
+    override fun output(observation: SnakeObservationModel): SnakeAction {
         return decision
     }
 
-    override fun handle(event: Event) {
+    override fun handleEvent(event: Event) {
         if(event is NavigationEvent) {
-            if (event.keyEvent.code == KeyCode.UP) {
-                decision[0] = 1.0F
-                decision[1] = 0.0F
-                decision[2] = 0.0F
-                decision[3] = 0.0F
-            } else if (event.keyEvent.code == KeyCode.DOWN) {
-                decision[0] = 0.0F
-                decision[1] = 1.0F
-                decision[2] = 0.0F
-                decision[3] = 0.0F
-            } else if (event.keyEvent.code == KeyCode.LEFT) {
-                decision[0] = 0.0F
-                decision[1] = 0.0F
-                decision[2] = 1.0F
-                decision[3] = 0.0F
-            }else if (event.keyEvent.code == KeyCode.RIGHT) {
-                decision[0] = 0.0F
-                decision[1] = 0.0F
-                decision[2] = 0.0F
-                decision[3] = 1.0F
+            when (event.keyEvent.code) {
+                KeyCode.UP -> {
+                    decision = SnakeAction.UP
+                }
+                KeyCode.DOWN -> {
+                    decision = SnakeAction.DOWN
+                }
+                KeyCode.LEFT -> {
+                    decision = SnakeAction.LEFT
+                }
+                KeyCode.RIGHT -> {
+                    decision = SnakeAction.RIGHT
+                }
             }
         }
     }

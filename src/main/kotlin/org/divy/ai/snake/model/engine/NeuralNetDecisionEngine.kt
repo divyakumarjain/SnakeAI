@@ -1,6 +1,6 @@
 package org.divy.ai.snake.model.engine
 
-import org.divy.ai.snake.model.snake.SnakeVision
+import org.divy.ai.snake.model.snake.*
 import java.lang.Math.random
 import kotlin.math.floor
 import kotlin.math.max
@@ -27,9 +27,8 @@ class NeuralNetDecisionEngine (var iNodes: Int = 24, var hNodes: Int = 16, var o
         weights = initializedWeights.filterNotNull().toTypedArray()
     }
 
-    override fun output(vision: SnakeVision): FloatArray {
-        vision.look()
-        val inputs: Matrix = weights[0].singleColumnMatrixFromArray(vision.vision)
+    override fun output(observation: SnakeObservationModel): SnakeAction {
+        val inputs: Matrix = weights[0].singleColumnMatrixFromArray(observation.vectorizedObservation())
         var currBias: Matrix = inputs.addBias()
         for (i in 0 until hLayers) {
             val hiddenIp: Matrix = weights[i].dot(currBias)
@@ -38,7 +37,19 @@ class NeuralNetDecisionEngine (var iNodes: Int = 24, var hNodes: Int = 16, var o
         }
         val outputIp: Matrix = weights[weights.size - 1].dot(currBias)
         val output: Matrix = outputIp.activate()
-        return output.toArray()
+
+        var max = 0f
+        var maxIndex = 0
+        val decision = output.toArray()
+
+        for (i in decision.indices) {
+            if (decision[i] > max) {
+                max = decision[i]
+                maxIndex = i
+            }
+        }
+
+        return valueOfByInt(maxIndex)
     }
 
     override fun crossover(engine: DecisionEngine): NeuralNetDecisionEngine {
