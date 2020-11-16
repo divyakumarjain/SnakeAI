@@ -28,7 +28,7 @@ class NeuralNetDecisionEngine (var iNodes: Int = 24, var hNodes: Int = 16, var o
     }
 
     override fun output(observation: SnakeObservationModel): SnakeAction {
-        val inputs: Matrix = weights[0].singleColumnMatrixFromArray(observation.vectorizedObservation())
+        val inputs: Matrix = weights[0].singleColumnMatrixFromArray(observation.floatVectorizedObservation())
         var currBias: Matrix = inputs.addBias()
         for (i in 0 until hLayers) {
             val hiddenIp: Matrix = weights[i].dot(currBias)

@@ -1,14 +1,17 @@
 package org.divy.ai.snake.animation.game
 
+import com.github.ajalt.clikt.parameters.options.FlagOption
 import com.github.ajalt.clikt.parameters.options.OptionWithValues
 import javafx.fxml.FXML
 import javafx.scene.control.Control
 import javafx.scene.control.Label
 import javafx.scene.control.TextField
+import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
+import javafx.util.converter.BooleanStringConverter
 import javafx.util.converter.FloatStringConverter
 import javafx.util.converter.IntegerStringConverter
-import org.divy.ai.snake.model.engine.qlearning.AbstractLearningCommand
+import org.divy.ai.snake.application.command.AbstractLearningCommand
 import kotlin.reflect.KMutableProperty
 
 class GameScreenController(private val rlCommand: AbstractLearningCommand) {
@@ -16,7 +19,7 @@ class GameScreenController(private val rlCommand: AbstractLearningCommand) {
     private val formControl: MutableMap<String, Control> = mutableMapOf()
 
     @FXML
-    lateinit var controlPanel: VBox
+    lateinit var controlPanel: FlowPane
 
     @FXML
     fun submit() {
@@ -27,6 +30,9 @@ class GameScreenController(private val rlCommand: AbstractLearningCommand) {
                 }
                 "FLOAT" -> {
                     FloatStringConverter().fromString((formControl[option.names.first()] as TextField).text)
+                }
+                "BOOLEAN" -> {
+                    BooleanStringConverter().fromString((formControl[option.names.first()] as TextField).text)
                 }
                 else -> ""
             }
@@ -44,7 +50,7 @@ class GameScreenController(private val rlCommand: AbstractLearningCommand) {
         rlCommand.registeredOptions().forEach {
 
             controlPanel.children.add(Label(it.names.first()))
-            val currentValue = if(it is OptionWithValues<*, *, *>) it.value.toString() else ""
+            val currentValue = if(it is OptionWithValues<*, *, *>) it.value.toString() else if (it is FlagOption<*>) it.value.toString() else ""
             val textField = TextField(currentValue)
             controlPanel.children.add(textField)
 

@@ -1,86 +1,110 @@
 package org.divy.ai.snake.model.engine.qlearning.qnetwork
 
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
-import org.divy.ai.snake.model.engine.qlearning.PreviousScoreReward
+import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
+import org.divy.ai.snake.model.engine.qlearning.DefaultExperienceBuffer
+import org.divy.ai.snake.model.engine.qlearning.StepRewardCalculator
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.DefaultNetworkBuilder
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.NetworkBuilder
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.NetworkTrainer
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.training.AsyncNetworkTrainer
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.training.DefaultTrainingDataBuilder
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.training.TrainingDataBuilder
 import org.divy.ai.snake.model.game.Event
+import org.divy.ai.snake.model.game.EventRegistry
+import org.divy.ai.snake.model.game.EventType
 import org.divy.ai.snake.model.snake.SnakeAction
 import org.divy.ai.snake.model.snake.SnakeModel
 import org.divy.ai.snake.model.snake.SnakeObservationModel
 import org.divy.ai.snake.model.snake.event.SnakeMoveCompleted
-import org.divy.ai.snake.model.snake.valueOfByInt
+import org.nd4j.linalg.api.ndarray.INDArray
 import java.time.LocalDateTime
-import java.util.*
-import kotlin.random.Random
 
-class SingleQNAlgorithm(
+open class SingleQNAlgorithm(
     learningRate: Double
     , gamaRate: Float
     , val experienceBufferSize: Int = 1000
-    , val rewardCalculator: PreviousScoreReward
-    , val randomActionProvider: RandomActionProvider
-    , private val networkTrainer: NetworkTrainer = AsyncNetworkTrainer(gamaRate)
+    , val rewardCalculator: StepRewardCalculator
+    , private val randomActionProvider: RandomActionProvider
+    , private val networkTrainer: NetworkTrainer = AsyncNetworkTrainer(
+        gamaRate
+    )
     , networkBuilder: NetworkBuilder = DefaultNetworkBuilder()
 ) : QNAlgorithm {
-    val neuralNetwork: MultiLayerNetwork = networkBuilder.buildNetwork(learningRate)
+
+    private var episodeCount: Int = 0
+    var neuralNetwork: MultiLayerNetwork = networkBuilder.buildNetwork(learningRate)
 
     private lateinit var recentObservation: SnakeObservationModel
     private lateinit var  recentAction: SnakeAction
 
-    private var lastLearningTime: LocalDateTime =
-        LocalDateTime.now()
+    private var lastLearningTime: LocalDateTime = LocalDateTime.now()
 
-    private var movesInDay: Int = 0
+    override var actionCountInEpisode: Int = 0
+    override var randomActionCountInEpisode: Int = 0
 
-    private val experienceBuffer: Queue<SnakeBoardExperience<Double>> =
-        LinkedList()
+    var trainingDataBuilder: TrainingDataBuilder = DefaultTrainingDataBuilder(gamaRate = gamaRate )
+
+    private val experienceBuffer: DefaultExperienceBuffer<SnakeBoardExperience<Double>> = DefaultExperienceBuffer(experienceBufferSize)
+
+    init {
+        EventRegistry.instance.addEventListener(EventType.EPISODE_COMPLETED, this)
+        EventRegistry.instance.addEventListener(EventType.SNAKE_MOVE_COMPLETED, this)
+    }
 
     private fun retrieveActionWithMaxQValue(
         observation: SnakeObservationModel
     ): SnakeAction {
-        return qValueForObservation(observation).maxBy { it.value }?.key?:randomAction()
+        return qValueForObservation(observation).maxBy { it.value }?.key?:randomAction(observation)
     }
 
-    private fun randomAction(): SnakeAction {
-        return valueOfByInt(
-            Random(
-                System.nanoTime()
-            ).nextInt(0, 4)
-        )
+    private fun randomAction(observation: SnakeObservationModel): SnakeAction {
+        randomActionCountInEpisode++
+        return randomActionProvider.suggestAction(observation)
     }
 
-    override fun suggestAction(observation: SnakeObservationModel): SnakeAction {
-        recentObservation = observation
+    override fun suggestAction(observation: SnakeObservationModel?): SnakeAction {
+        return if(observation!=null) {
+            recentObservation = observation
 
+            recentAction = if (randomActionProvider.shouldPlayRandomAction()) {
+                randomAction(observation)
+            } else {
+                retrieveActionWithMaxQValue(observation)
+            }
 
-        recentAction = if (randomActionProvider.shouldPlayRandomAction()) {
-            randomActionProvider.suggestAction(observation)
-        } else {
-            retrieveActionWithMaxQValue(observation)
-        }
+            actionCountInEpisode++
 
-        return recentAction
+            recentAction
+        } else
+            SnakeAction.LEFT
+
     }
 
     override fun handleEvent(event: Event) {
-        if(event is SnakeMoveCompleted) {
-            updateNetwork(event.snake, event.observation)
+        when (event) {
+            is SnakeMoveCompleted -> {
+                rememberAction(event.snake, event.observation)
+            }
+            is EpisodeCompleted -> {
+                episodeCompleted()
+            }
         }
     }
 
-    private fun updateNetwork(
+    protected open fun episodeCompleted() {
+        ++episodeCount
+        sleepTraining()
+        this.randomActionCountInEpisode = 0
+        this.actionCountInEpisode = 0
+    }
+
+    private fun rememberAction(
         snake: SnakeModel,
         observation: SnakeObservationModel
     ) {
-
         val reward = calculateReward(snake)
-
         rememberExperience(recentObservation, recentAction, reward, observation)
-
-        ++movesInDay
-
-        if(snake.dead) {
-            sleepTraining()
-        }
     }
 
     private fun calculateReward(snake: SnakeModel): SnakeBoardReward<Double> = rewardCalculator.calculateReward(snake)
@@ -90,14 +114,8 @@ class SingleQNAlgorithm(
         if(networkTrainer.isTrainingRunning())
             networkTrainer.waitForTraining()
 
-        networkTrainer.trainWithExperiences(experienceBuffer, this.neuralNetwork, this.neuralNetwork);
+        networkTrainer.trainWithExperiences(experienceBuffer, this.neuralNetwork)
 
-        var i=experienceBuffer.size
-
-        while(i > experienceBufferSize) {
-            experienceBuffer.remove()
-            i--
-        }
         lastLearningTime = LocalDateTime.now()
     }
 
@@ -111,11 +129,17 @@ class SingleQNAlgorithm(
             observation,
             action,
             reward,
-            nextObservation
-        )
-        if(!experienceBuffer.contains(experience)) {
-            this.experienceBuffer.add(experience)
-        }
+            nextObservation)
+
+        val result = buildTrainingData(experience)
+
+        experience.trainingData = result
+
+        experienceBuffer.add(experience)
+    }
+
+    protected open fun buildTrainingData(experience: SnakeBoardExperience<Double>): Pair<INDArray, INDArray> {
+        return trainingDataBuilder.map(experience, neuralNetwork)
     }
 
     override fun qValueForObservation(observation: SnakeObservationModel): Map<SnakeAction, Double> {

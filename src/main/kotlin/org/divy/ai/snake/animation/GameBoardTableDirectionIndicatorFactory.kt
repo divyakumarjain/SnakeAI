@@ -1,11 +1,9 @@
-package org.divy.ai.snake.model.engine.qlearning.animation
+package org.divy.ai.snake.animation
 
 import javafx.animation.AnimationTimer
 import javafx.scene.canvas.Canvas
-import org.divy.ai.snake.animation.GameBoardCellQTableAnimationTimer
-import org.divy.ai.snake.animation.QValueProvider
 import org.divy.ai.snake.animation.game.GameBoardAnimationFactory
-import org.divy.ai.snake.model.engine.qlearning.AbstractLearningCommand
+import org.divy.ai.snake.application.command.AbstractLearningCommand
 import org.divy.ai.snake.model.game.EventType
 
 class GameBoardTableDirectionIndicatorFactory(private val qValueProvider: QValueProvider) : GameBoardAnimationFactory {

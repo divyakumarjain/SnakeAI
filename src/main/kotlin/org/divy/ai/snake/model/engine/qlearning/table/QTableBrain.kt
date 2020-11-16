@@ -2,7 +2,7 @@ package org.divy.ai.snake.model.engine.qlearning.table
 
 import org.divy.ai.snake.animation.QValueProvider
 import org.divy.ai.snake.model.engine.DecisionEngine
-import org.divy.ai.snake.model.engine.qlearning.PreviousScoreReward
+import org.divy.ai.snake.model.engine.qlearning.StepRewardCalculator
 import org.divy.ai.snake.model.engine.qlearning.RewardCalculator
 import org.divy.ai.snake.model.engine.qlearning.qnetwork.SnakeBoardReward
 import org.divy.ai.snake.model.game.Event
@@ -16,7 +16,7 @@ class QTableBrain(
     val learningRate: Float,
     val randomFactor: Float,
     val gamaRate: Float,
-    val rewardCalculator: RewardCalculator<Double> = PreviousScoreReward()
+    val rewardCalculator: RewardCalculator<Double> = StepRewardCalculator()
 ) : DecisionEngine, GameEventListener, QValueProvider {
 
     private var qTableUpdateTime: LocalDateTime = LocalDateTime.now()

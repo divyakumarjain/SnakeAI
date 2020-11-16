@@ -5,6 +5,7 @@ import org.divy.ai.snake.model.snake.SnakeModel
 import org.divy.ai.snake.model.engine.NeuralNetDecisionEngine
 import org.divy.ai.snake.model.food.RandomFoodDropper
 import org.divy.ai.snake.model.game.factory.SnakeFactory
+import org.divy.ai.snake.model.snake.EightDirectionSnakeVision
 import org.divy.ai.snake.model.snake.event.SnakeDeadEvent
 import java.lang.Math.random
 
@@ -43,14 +44,18 @@ class AIGameBoardModel(boardWidth: Long, boardHeight: Long, snakes: MutableList<
             return object : SnakeFactory {
                 override fun get(): SnakeModel {
                     val snakesForBoard = ArrayList<SnakeModel>(1)
+                    val vision = EightDirectionSnakeVision(board = this@AIGameBoardModel)
                     val snakeModel = SnakeModel(
                         brain = NeuralNetDecisionEngine(),
                         board = this@AIGameBoardModel,
                         headPosition = Position(
                             (random() * boardWidth).toLong(),
                             (random() * boardHeight).toLong()
-                        )
+                        ),
+                        vision = vision
                     )
+
+                    vision.snake = snakeModel
 
                     snakesForBoard.add(snakeModel)
 

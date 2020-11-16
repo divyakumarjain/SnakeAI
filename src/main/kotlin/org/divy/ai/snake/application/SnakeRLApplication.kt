@@ -15,10 +15,10 @@ import javafx.stage.Stage
 import org.divy.ai.snake.animation.chart.ProgressChartController
 import org.divy.ai.snake.animation.game.GameBoardAnimationFactory
 import org.divy.ai.snake.animation.game.GameScreenController
-import org.divy.ai.snake.model.engine.qlearning.AbstractLearningCommand
-import org.divy.ai.snake.model.engine.qlearning.SnakeBoardRlCommand
-import org.divy.ai.snake.model.engine.qlearning.qnetwork.SnakeBoardRlQNeuralNetworkCommand
-import org.divy.ai.snake.model.engine.qlearning.table.SnakeBoardRlQTableCommand
+import org.divy.ai.snake.application.command.AbstractLearningCommand
+import org.divy.ai.snake.application.command.SnakeBoardRlCommand
+import org.divy.ai.snake.application.command.qnetwork.SnakeBoardRlQNeuralNetworkCommand
+import org.divy.ai.snake.application.command.table.SnakeBoardRlQTableCommand
 
 class SnakeRLApplication: Application() {
     private val rlTableCommand =
@@ -37,7 +37,7 @@ class SnakeRLApplication: Application() {
 
 fun main(args: Array<String>) = launch(SnakeRLApplication::class.java, *args)
 
-class SnakeGameScreenImpl(val rlCommand: AbstractLearningCommand, val gameBoardAnimationFactory: Array<GameBoardAnimationFactory>) {
+class SnakeGameScreenImpl(private val rlCommand: AbstractLearningCommand, private val gameBoardAnimationFactory: Array<GameBoardAnimationFactory>) {
 
     fun loadProgressChart(): Parent {
         val fxmlLoader = FXMLLoader(SnakeAIApplication::class.java.classLoader.getResource("progressChart.fxml"))
@@ -63,8 +63,8 @@ class SnakeGameScreenImpl(val rlCommand: AbstractLearningCommand, val gameBoardA
 
         boardCanvas.isFocusTraversable = true
 
-        boardCanvas.width = (rlCommand.cellResolution * rlCommand.boardWidth).toDouble()
-        boardCanvas.height = (rlCommand.cellResolution * rlCommand.boardHeight).toDouble()
+        boardCanvas.width = (rlCommand.cellResolution * rlCommand.boardWidth)
+        boardCanvas.height = (rlCommand.cellResolution * rlCommand.boardHeight)
 
         boardCanvas.addEventFilter(MouseEvent.ANY) { boardCanvas.requestFocus() }
 

@@ -1,45 +1,118 @@
 package org.divy.ai.snake.model.snake
 
-data class SnakeObservationModel(val foodObservation:DirectionalObservation = DirectionalObservation()
-                                 , val wallObservation:DirectionalObservation = DirectionalObservation()
-                                 , val bodyObservation:DirectionalObservation = DirectionalObservation())
+data class SnakeObservationModel(
+    val directionCount: Int = DIRECTION_TYPE_COUNT,
+    val foodObservation: FloatArray = FloatArray(directionCount)
+    , val bodyObservation: FloatArray = FloatArray(directionCount)
+    , val wallObservation: FloatArray? = null
+    , val headObservation: FloatArray? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
 
-data class DirectionalObservation (
-    val left: Float = 0.0f,
-    val right: Float = 0.0f,
-    val up: Float = 0.0f,
-    val down: Float = 0.0f,
-    val leftDown: Float = 0.0f,
-    val leftUp: Float = 0.0f,
-    val rightUp: Float = 0.0f,
-    val rightDown: Float =0.0f
-)
+        other as SnakeObservationModel
 
-val OBJECT_TYPE_COUNT: Int = SnakeVision.ObjectType.values().size
+        if (directionCount != other.directionCount) return false
+        if (!foodObservation.contentEquals(other.foodObservation)) return false
+        if (!bodyObservation.contentEquals(other.bodyObservation)) return false
+        if (wallObservation != null) {
+            if (other.wallObservation == null) return false
+            if (!wallObservation.contentEquals(other.wallObservation)) return false
+        } else if (other.wallObservation != null) return false
+        if (headObservation != null) {
+            if (other.headObservation == null) return false
+            if (!headObservation.contentEquals(other.headObservation)) return false
+        } else if (other.headObservation != null) return false
 
-private fun positionFor(direction: SnakeVision.Direction, objectType: SnakeVision.ObjectType): Int = direction.value * OBJECT_TYPE_COUNT + objectType.value
+        return true
+    }
 
-fun SnakeObservationModel.vectorizedObservation(): FloatArray {
+    override fun hashCode(): Int {
+        var result = directionCount
+        result = 31 * result + foodObservation.contentHashCode()
+        result = 31 * result + bodyObservation.contentHashCode()
+        result = 31 * result + (wallObservation?.contentHashCode() ?: 0)
+        result = 31 * result + (headObservation?.contentHashCode() ?: 0)
+        return result
+    }
+}
+fun SnakeObservationModel.floatVectorizedObservation(): FloatArray {
 
-    val floatArray = FloatArray(SnakeVision.Direction.values().size * SnakeVision.ObjectType.values().size)
+    val floatArray = FloatArray(directionCount * OBJECT_TYPE_COUNT)
 
-    this.foodObservation.vectorizedObservation(SnakeVision.ObjectType.FOOD, floatArray)
-    this.wallObservation.vectorizedObservation(SnakeVision.ObjectType.WALL, floatArray)
-    this.bodyObservation.vectorizedObservation(SnakeVision.ObjectType.BODY, floatArray)
+    for(foodIndex in this.foodObservation.indices) {
+        floatArray[ObjectType.FOOD.value * directionCount + foodIndex] = this.foodObservation[foodIndex]
+    }
+
+    for(bodyIndex in this.bodyObservation.indices) {
+        floatArray[ObjectType.BODY.value * directionCount + bodyIndex] = this.bodyObservation[bodyIndex]
+    }
+    if(this.wallObservation != null) {
+        for(wallIndex in this.wallObservation.indices) {
+            floatArray[ObjectType.WALL.value * directionCount + wallIndex] = this.wallObservation[wallIndex]
+        }
+    }
+
+    if(this.headObservation != null) {
+        for(headIndex in this.headObservation.indices) {
+            floatArray[ObjectType.WALL.value * directionCount + headIndex] = this.headObservation[headIndex]
+        }
+    }
+
+    return floatArray
+}
+
+fun SnakeObservationModel.floatVectorizedObservation(depth:Int, height: Int, width:Int): FloatArray {
+
+    val floatArray = FloatArray(depth*height*width)
+
+    for(foodIndex in this.foodObservation.indices) {
+        floatArray[ObjectType.FOOD.value * directionCount + foodIndex] = this.foodObservation[foodIndex]
+    }
+
+    for(bodyIndex in this.bodyObservation.indices) {
+        floatArray[ObjectType.BODY.value * directionCount + bodyIndex] = this.bodyObservation[bodyIndex]
+    }
+    if(this.wallObservation != null) {
+        for(wallIndex in this.wallObservation.indices) {
+            floatArray[ObjectType.WALL.value * directionCount + wallIndex] = this.wallObservation[wallIndex]
+        }
+    }
+
+    if(this.headObservation != null) {
+        for(headIndex in this.headObservation.indices) {
+            floatArray[ObjectType.WALL.value * directionCount + headIndex] = this.headObservation[headIndex]
+        }
+    }
 
     return floatArray
 }
 
 
-fun DirectionalObservation.vectorizedObservation(
-    objectType: SnakeVision.ObjectType,
-    floatArray: FloatArray) {
-    floatArray[positionFor(SnakeVision.Direction.LEFT, objectType)] = this.left
-    floatArray[positionFor(SnakeVision.Direction.RIGHT, objectType)] = this.right
-    floatArray[positionFor(SnakeVision.Direction.UP, objectType)] = this.up
-    floatArray[positionFor(SnakeVision.Direction.DOWN, objectType)] = this.down
-    floatArray[positionFor(SnakeVision.Direction.LEFT_DOWN, objectType)] = this.leftDown
-    floatArray[positionFor(SnakeVision.Direction.LEFT_UP, objectType)] = this.leftUp
-    floatArray[positionFor(SnakeVision.Direction.RIGHT_UP, objectType)] = this.rightUp
-    floatArray[positionFor(SnakeVision.Direction.RIGHT_DOWN, objectType)] = this.rightDown
+
+fun SnakeObservationModel.doubleVectorizedObservation(): DoubleArray {
+
+    val array = DoubleArray(directionCount * OBJECT_TYPE_COUNT)
+
+    for(foodIndex in this.foodObservation.indices) {
+        array[ObjectType.FOOD.value * directionCount + foodIndex] = this.foodObservation[foodIndex].toDouble()
+    }
+
+    for(bodyIndex in this.bodyObservation.indices) {
+        array[ObjectType.BODY.value * directionCount + bodyIndex] = this.bodyObservation[bodyIndex].toDouble()
+    }
+    if(this.wallObservation != null) {
+        for(wallIndex in this.wallObservation.indices) {
+            array[ObjectType.WALL.value * directionCount + wallIndex] = this.wallObservation[wallIndex].toDouble()
+        }
+    }
+
+    if(this.headObservation != null) {
+        for(headIndex in this.headObservation.indices) {
+            array[ObjectType.WALL.value * directionCount + headIndex] = this.headObservation[headIndex].toDouble()
+        }
+    }
+
+    return array
 }

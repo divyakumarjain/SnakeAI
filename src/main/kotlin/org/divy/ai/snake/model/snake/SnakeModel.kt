@@ -10,13 +10,16 @@ import org.divy.ai.snake.model.snake.event.SnakeMoveCompleted
 import kotlin.collections.ArrayList
 import kotlin.math.floor
 import kotlin.math.pow
+import org.divy.ai.snake.model.snake.event.SnakeDeathType
 
 
-class SnakeModel(private val brain: DecisionEngine
-                 , private val board: GameBoardModel
+class SnakeModel(private val brain: DecisionEngine? = null
+                 , private var board: GameBoardModel? = null
+                 , val vision: SnakeVision
                  , headPosition: Position = Position(
-        (Math.random() * board.boardWidth).toLong(),
-        (Math.random() * board.boardHeight).toLong())) {
+        (Math.random() * (board?.boardWidth ?: 0)).toLong(),
+        (Math.random() * (board?.boardHeight?:0)).toLong())) {
+
     var score: Long = 0
     var lifeLeft = 200 //amount of moves the snake can make before it dies
     var lifetime = 0 //amount of time the snake has been alive
@@ -28,14 +31,16 @@ class SnakeModel(private val brain: DecisionEngine
     var head: SnakeHeadModel = SnakeHeadModel(headPosition)
     var body: ArrayList<Position> = ArrayList() //snakes body
 
-    val vision: SnakeVision = SnakeVision(this, board)
+    private val eventRegistry: EventRegistry = EventRegistry.createChildInstance()
 
-    private val eventRegistry: EventRegistry = EventRegistry(board.eventRegistry)
+    init {
+        vision.snake = this
+    }
 
     private fun bodyCollide(x: Long, y: Long): Boolean {  //check if a position collides with the snakes body
         for (i in body.indices) {
             if (x == body[i].x && y == body[i].y) {
-                println("Eaten My own body at $i")
+                println("Eaten My own body at $i with body length ${body.size}")
                 return true
             }
         }
@@ -43,11 +48,11 @@ class SnakeModel(private val brain: DecisionEngine
     }
 
     private fun foodCollide(position: Position): Boolean {
-        return board.isFoodDroppedAt(position)
+        return board!!.isFoodDroppedAt(position)
     }
 
     private fun wallCollide(x: Long, y: Long): Boolean {  //check if a position collides with the wall
-        return board.isOutSideBoard(x,y)
+        return board!!.isOutSideBoard(x,y)
     }
 
     fun thinkAndMove() {  //move the snake
@@ -64,17 +69,22 @@ class SnakeModel(private val brain: DecisionEngine
 
             shiftBody()
 
-            dead = wallCollide(head.position.x, head.position.y)
-                    || bodyCollide(head.position.x, head.position.y)
-                    || isStarved()
+            val wallCollide = wallCollide(head.position.x, head.position.y)
+            val bodyCollide = bodyCollide(head.position.x, head.position.y)
+            val starved = isStarved()
 
-            if (foodCollide(head.position)) {
-                eat()
-            }
-
+            dead = wallCollide
+                    || bodyCollide
+                    || starved
 
             if (dead) {
-                raiseEvent(SnakeDeadEvent(this))
+                when {
+                    wallCollide -> raiseEvent(SnakeDeadEvent(this, SnakeDeathType.WALL_COLLIDE))
+                    bodyCollide -> raiseEvent(SnakeDeadEvent(this, SnakeDeathType.BODY_COLLIDE))
+                    starved -> raiseEvent(SnakeDeadEvent(this, SnakeDeathType.STARVED))
+                }
+            } else if (foodCollide(head.position)) {
+                eat()
             }
         }
     }
@@ -129,12 +139,20 @@ class SnakeModel(private val brain: DecisionEngine
         }
     }
 
-    fun crossover(parent: SnakeModel): SnakeModel {  //crossover the snake with another snake
-        if(brain is RegeneratableDecisionEngine) {
-            return SnakeModel(brain.crossover(parent.brain), board)
-        } else {
-            throw IllegalStateException("Brain of this Snake does not support Cross")
-        }
+    fun crossover(parent: SnakeModel): SnakeModel {
+
+        val newBrain = if(brain!=null) {
+
+            if(parent.brain is RegeneratableDecisionEngine) {
+                parent.brain.crossover(parent.brain)
+            } else {
+                throw IllegalStateException("Brain of this Snake does not support Cross")
+            }
+        } else null
+
+        val newVision = vision.clone()
+
+        return SnakeModel(brain = newBrain,vision =  newVision)
     }
 
     fun mutate(mutationRate: Float) {  //mutate the snakes brain
@@ -158,7 +176,7 @@ class SnakeModel(private val brain: DecisionEngine
     }
 
     private fun think(observations: SnakeObservationModel): SnakeAction {
-        return brain.output(observations)
+        return brain!!.output(observations)
     }
 
     private fun moveUp() {

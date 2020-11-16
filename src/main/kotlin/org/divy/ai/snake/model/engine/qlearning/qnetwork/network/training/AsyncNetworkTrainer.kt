@@ -1,13 +1,17 @@
-package org.divy.ai.snake.model.engine.qlearning.qnetwork
+package org.divy.ai.snake.model.engine.qlearning.qnetwork.network.training
 
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
-import java.util.*
+import org.divy.ai.snake.model.engine.qlearning.ExperienceBuffer
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.SnakeBoardExperience
+import org.divy.ai.snake.model.engine.qlearning.qnetwork.network.NetworkTrainer
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.ForkJoinTask
 
 
 class AsyncNetworkTrainer(gamaRate: Float
-                          , private val trainer: SyncNetworkTrainer = SyncNetworkTrainer((gamaRate))
+                          , private val trainer: SyncNetworkTrainer = SyncNetworkTrainer(
+        (gamaRate)
+    )
 ) : NetworkTrainer by trainer {
 
     private var task: ForkJoinTask<*>? = null
@@ -15,12 +19,10 @@ class AsyncNetworkTrainer(gamaRate: Float
     var forkJoinPool = ForkJoinPool()
 
     override fun trainWithExperiences(
-        trainingExperiences: Queue<SnakeBoardExperience<Double>>,
-        passiveNeuralNetwork: MultiLayerNetwork,
-        activeNeuralNetwork: MultiLayerNetwork
-    ) {
+        trainingExperiences: ExperienceBuffer<SnakeBoardExperience<Double>>,
+        neuralNetwork: MultiLayerNetwork) {
         this.task = forkJoinPool.submit {
-            trainer.trainWithExperiences(trainingExperiences, passiveNeuralNetwork, activeNeuralNetwork)
+            trainer.trainWithExperiences(trainingExperiences, neuralNetwork)
         }
     }
 

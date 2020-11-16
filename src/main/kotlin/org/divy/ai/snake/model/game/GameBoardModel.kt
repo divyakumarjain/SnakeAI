@@ -8,8 +8,8 @@ import org.divy.ai.snake.model.game.events.StartGameEvent
 import kotlinx.coroutines.*
 import org.divy.ai.snake.model.food.FoodEvent
 
-open class GameBoardModel(val boardWidth: Long = 20
-                          , val boardHeight: Long = 20
+open class GameBoardModel(val boardWidth: Long = 30
+                          , val boardHeight: Long = 30
                           , val snakes: MutableList<SnakeModel> = ArrayList()
                           , var score: Long = 1) {
 
@@ -18,7 +18,7 @@ open class GameBoardModel(val boardWidth: Long = 20
     var lowScore: Long = 0
     var highScore: Long = 0
     var averageScore: Double = 0.0
-    val eventRegistry: EventRegistry = EventRegistry()
+    val eventRegistry: EventRegistry = EventRegistry.instance
     val internalFoodList: ArrayList<FoodModel> = ArrayList()
 
     lateinit var foodDropper: FoodDropper

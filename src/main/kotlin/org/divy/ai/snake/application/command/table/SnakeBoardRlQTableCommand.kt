@@ -1,18 +1,20 @@
-package org.divy.ai.snake.model.engine.qlearning.table
+package org.divy.ai.snake.application.command.table
 
 import javafx.animation.AnimationTimer
 import org.divy.ai.snake.animation.game.GameBoardAnimationFactoryImpl
 import org.divy.ai.snake.application.SnakeGameScreenImpl
-import org.divy.ai.snake.model.engine.qlearning.AbstractLearningCommand
+import org.divy.ai.snake.application.command.AbstractLearningCommand
 import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
-import org.divy.ai.snake.model.engine.qlearning.PreviousScoreReward
-import org.divy.ai.snake.model.engine.qlearning.animation.GameBoardTableDirectionIndicatorFactory
+import org.divy.ai.snake.model.engine.qlearning.StepRewardCalculator
+import org.divy.ai.snake.animation.GameBoardTableDirectionIndicatorFactory
+import org.divy.ai.snake.model.engine.qlearning.table.QTableBrain
 import org.divy.ai.snake.model.food.FoodEvent
 import org.divy.ai.snake.model.food.RandomFoodDropper
 import org.divy.ai.snake.model.game.Event
 import org.divy.ai.snake.model.game.EventType
 import org.divy.ai.snake.model.game.GameBoardModel
 import org.divy.ai.snake.model.game.GameEventListener
+import org.divy.ai.snake.model.snake.EightDirectionSnakeVision
 import org.divy.ai.snake.model.snake.SnakeModel
 import java.util.stream.IntStream
 
@@ -23,13 +25,10 @@ class SnakeBoardRlQTableCommand : AbstractLearningCommand(help="Start Snake Boar
     override fun run() {
         environment = createBoard()
         qTableBrain = QTableBrain(
-            gamaRate = gamaRate
-            ,
-            learningRate = learningRate
-            ,
-            randomFactor = randomFactor
-            ,
-            rewardCalculator = PreviousScoreReward()
+            gamaRate = gamaRate,
+            learningRate = learningRate,
+            randomFactor = randomFactor,
+            rewardCalculator = StepRewardCalculator()
         )
         start()
     }
@@ -57,9 +56,11 @@ class SnakeBoardRlQTableCommand : AbstractLearningCommand(help="Start Snake Boar
                 runTraining()
             }
         }
-        SnakeGameScreenImpl(this, arrayOf(GameBoardAnimationFactoryImpl(), GameBoardTableDirectionIndicatorFactory(
-            qTableBrain
-        ))).startGame()
+        SnakeGameScreenImpl(this, arrayOf(GameBoardAnimationFactoryImpl(),
+            GameBoardTableDirectionIndicatorFactory(
+                qTableBrain
+            )
+        )).startGame()
         animator.start()
     }
 
@@ -68,7 +69,8 @@ class SnakeBoardRlQTableCommand : AbstractLearningCommand(help="Start Snake Boar
             if (!environment.hasLiveSnake()) {
                 environment.raiseEvent(
                     EpisodeCompleted(
-                        episode
+                        episode,
+                        buildStat()
                     )
                 )
                 startNewEpisode()
@@ -78,12 +80,18 @@ class SnakeBoardRlQTableCommand : AbstractLearningCommand(help="Start Snake Boar
         }
     }
 
+    private fun buildStat(): Map<String, Number> {
+        return mapOf()
+    }
+
     private fun startNewEpisode() {
         environment.snakes.clear()
 
         episode++
 
-        val snake = SnakeModel(board = environment, brain = qTableBrain)
+        val vision = EightDirectionSnakeVision(board = environment)
+        val snake = SnakeModel(board = environment, brain = qTableBrain, vision = vision)
+        vision.snake = snake
 
         snake.addEventListener(EventType.SNAKE_MOVE_COMPLETED, qTableBrain)
 

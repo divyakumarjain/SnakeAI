@@ -2,32 +2,102 @@ package org.divy.ai.snake.model.snake
 
 import org.divy.ai.snake.model.game.GameBoardModel
 import org.divy.ai.snake.model.Position
+import java.lang.IllegalArgumentException
 
-class SnakeVision (val snake: SnakeModel?, val board: GameBoardModel)  {
 
-    val vision: FloatArray = FloatArray(24)
+enum class ObjectType(val value: Int) {
+    FOOD(0),
+    BODY(1),
+    WALL(2)
+}
 
-    enum class ObjectType(val value: Int) {
-        FOOD(0),
-        BODY(1),
-        WALL(2)
+enum class Direction(val value: Int, val relativePosition: Position) {
+    LEFT(0, Position(-1, 0)),
+    UP(1, Position(0, -1)),
+    RIGHT(2, Position(1, 0)),
+    DOWN(3, Position(0, 1)),
+    LEFT_UP(4, Position(-1, -1)),
+    LEFT_DOWN(5, Position(-1, 1)),
+    RIGHT_UP(6, Position(1, -1)),
+    RIGHT_DOWN(7, Position(1, 1))
+}
+
+fun directionValueOfByInt(value: Int): Direction {
+    return when (value) {
+        0 -> Direction.LEFT
+        1 -> Direction.UP
+        2 -> Direction.RIGHT
+        3 -> Direction.DOWN
+        4 -> Direction.LEFT_UP
+        5 -> Direction.LEFT_DOWN
+        6 -> Direction.RIGHT_UP
+        7 -> Direction.RIGHT_DOWN
+        else -> throw  IllegalArgumentException("There is no action for value $value")
+    }
+}
+
+val OBJECT_TYPE_COUNT: Int = ObjectType.values().size
+val DIRECTION_TYPE_COUNT: Int = Direction.values().size
+
+class EightDirectionSnakeVision (snake: SnakeModel? = null, board: GameBoardModel) : DirectionSnakeVision(8, snake, board) {
+    override fun clone(): SnakeVision {
+        return EightDirectionSnakeVision(board = this.board)
+    }
+}
+
+class FourDirectionSnakeVision (snake: SnakeModel? = null, board: GameBoardModel) : DirectionSnakeVision(4, snake, board) {
+    override fun clone(): SnakeVision {
+        return FourDirectionSnakeVision(board = this.board)
+    }
+}
+class BoardSnakeVision(val board: GameBoardModel, val width: Long = board.boardWidth, val height: Long = board.boardHeight, override var snake: SnakeModel?=null) : SnakeVision {
+
+    override fun clone(): SnakeVision {
+        return BoardSnakeVision(board = this.board, width = width, height = height)
     }
 
-    enum class Direction(val value: Int, val relativePosition: Position) {
-        LEFT(0, Position(-1, 0)),
-        LEFT_UP(1, Position(-1, -1)),
-        UP(2, Position(0, -1)),
-        RIGHT_UP(3, Position(1, -1)),
-        RIGHT(4, Position(1, 0)),
-        RIGHT_DOWN(5, Position(1, 1)),
-        DOWN(6, Position(0, 1)),
-        LEFT_DOWN(7, Position(-1, 1))
-    }
+    override fun observations(): SnakeObservationModel {
+        val foodObservation = FloatArray((width*height).toInt()) {0.0f}
+        val bodyObservation = FloatArray((width*height).toInt()) {0.0f}
+        val headObservation = FloatArray((width*height).toInt()) {0.0f}
 
-    fun observations(): SnakeObservationModel {
+        for(xIndex in 0 until width) {
+            for(yIndex in 0 until height) {
+                if(board.isFoodDroppedAt(Position(xIndex, yIndex)))
+                    foodObservation[(xIndex*height+yIndex).toInt()] = 1.0f
+            }
+        }
+
+        if (snake != null) {
+
+            val position = snake!!.head.position
+            if(position.x in 0 until height && position.y in 0 until width)
+                headObservation[(position.x * height + position.y).toInt()] = 1.0f
+
+            for(xIndex in 0 until width) {
+                for(yIndex in 0 until height) {
+                    if(snake!!.hasBodyAtPosition(Position(xIndex, yIndex)))
+                        bodyObservation[(xIndex*height+yIndex).toInt()] = 1.0f
+                }
+            }
+        }
+
+        return SnakeObservationModel((width*height).toInt(), foodObservation = foodObservation, bodyObservation = bodyObservation, headObservation = headObservation)
+    }
+}
+
+interface SnakeVision {
+    fun observations(): SnakeObservationModel
+    var snake: SnakeModel?
+    fun clone(): SnakeVision
+}
+
+abstract class DirectionSnakeVision (private val directionCount: Int, override var snake: SnakeModel?, val board: GameBoardModel) :SnakeVision {
+
+    override fun observations(): SnakeObservationModel {
         return if(snake!= null) {
-            observationFrom(fromPosition = snake.head.position
-                , snake = snake
+            observationFrom(fromPosition = snake!!.head.position
+                , snake = snake!!
                 , board = board)
         } else {
             SnakeObservationModel()
@@ -39,72 +109,29 @@ class SnakeVision (val snake: SnakeModel?, val board: GameBoardModel)  {
         snake: SnakeModel,
         board: GameBoardModel
     ): SnakeObservationModel {
-        val left = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.LEFT.relativePosition)
-        val leftDown = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.LEFT_DOWN.relativePosition)
-        val down = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.DOWN.relativePosition)
-        val right = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.RIGHT.relativePosition)
-        val leftUp = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.LEFT_UP.relativePosition)
-        val rightDown = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.RIGHT_DOWN.relativePosition)
-        val rightUp = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.RIGHT_UP.relativePosition)
-        val up = lookInDirectionFrom(fromPosition=fromPosition,
-            snake = snake,
-            board = board,
-            direction = Direction.UP.relativePosition)
 
+        var directionResult = mutableListOf<FloatArray>()
+        val foodObservation = FloatArray(directionCount)
+        val bodyObservation = FloatArray(directionCount)
+        val wallObservation = FloatArray(directionCount)
 
-        val foodObservation = DirectionalObservation(
-            left = left[ObjectType.FOOD.value]
-            , leftDown = leftDown[ObjectType.FOOD.value]
-            , down = down[ObjectType.FOOD.value]
-            , right = right[ObjectType.FOOD.value]
-            , leftUp = leftUp[ObjectType.FOOD.value]
-            , rightDown = rightDown[ObjectType.FOOD.value]
-            , rightUp = rightUp[ObjectType.FOOD.value]
-            , up = up[ObjectType.FOOD.value]
-        )
-        val bodyObservation = DirectionalObservation(
-            left = left[ObjectType.BODY.value]
-            , leftDown = leftDown[ObjectType.BODY.value]
-            , down = down[ObjectType.BODY.value]
-            , right = right[ObjectType.BODY.value]
-            , leftUp = leftUp[ObjectType.BODY.value]
-            , rightDown = rightDown[ObjectType.BODY.value]
-            , rightUp = rightUp[ObjectType.BODY.value]
-            , up = up[ObjectType.BODY.value]
-        )
-        val wallObservation = DirectionalObservation(
-            left = left[ObjectType.WALL.value]
-            , leftDown = leftDown[ObjectType.WALL.value]
-            , down = down[ObjectType.WALL.value]
-            , right = right[ObjectType.WALL.value]
-            , leftUp = leftUp[ObjectType.WALL.value]
-            , rightDown = rightDown[ObjectType.WALL.value]
-            , rightUp = rightUp[ObjectType.WALL.value]
-            , up = up[ObjectType.WALL.value]
-        )
+        for(directionIndex in 0 until directionCount) {
+            val result = lookInDirectionFrom(
+                fromPosition = fromPosition,
+                snake = snake,
+                board = board,
+                direction = directionValueOfByInt(directionIndex).relativePosition
+            )
+            directionResult.add(directionIndex, result)
+
+            foodObservation[directionIndex] = result[ObjectType.FOOD.value]
+            bodyObservation[directionIndex] = result[ObjectType.BODY.value]
+            wallObservation[directionIndex] = result[ObjectType.WALL.value]
+        }
+
         return SnakeObservationModel(
-            foodObservation = foodObservation
+            directionCount = directionCount
+            , foodObservation = foodObservation
             , bodyObservation = bodyObservation
             , wallObservation = wallObservation
         )

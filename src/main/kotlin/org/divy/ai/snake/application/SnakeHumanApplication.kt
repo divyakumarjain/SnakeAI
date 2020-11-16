@@ -1,5 +1,6 @@
 package org.divy.ai.snake.application
 
+import javafx.animation.AnimationTimer
 import javafx.application.Application
 import javafx.event.EventHandler
 import javafx.scene.Group
@@ -8,6 +9,7 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.input.MouseEvent
 import javafx.stage.Stage
 import org.divy.ai.snake.animation.GameBoardAnimationTimer
+import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
 import org.divy.ai.snake.model.game.EventType
 import org.divy.ai.snake.model.game.HumanGameBoardModel
 import org.divy.ai.snake.model.game.events.NavigationEvent
@@ -20,6 +22,7 @@ class SnakeHumanApplication : Application() {
 
     private val canvasWidth = boardWidth * cellResolution
     private val canvasHeight = boardHeight * cellResolution
+
 
     override fun start(theStage: Stage) {
         theStage.title = "Snake Game"
@@ -46,6 +49,20 @@ class SnakeHumanApplication : Application() {
 
         GameBoardAnimationTimer(boardCanvas.graphicsContext2D, gameModel, cellResolution).start()
         theStage.show()
+
+        val animator: AnimationTimer = object : AnimationTimer() {
+            override fun handle(arg0: Long) {
+//                if (!gameModel.hasLiveSnake()) {
+//                    gameModel.raiseEvent(
+//                        EpisodeCompleted(episode, buildStats(qNAlgorithm))
+//                    )
+//                    startNewEpisode()
+//                }
+                gameModel.snakes.forEach { it.thinkAndMove() }
+                gameModel.updateScores()
+            }
+        }
+        animator.start()
 
     }
 

@@ -1,4 +1,4 @@
-package org.divy.ai.snake.model.engine.qlearning
+package org.divy.ai.snake.application.command
 
 import com.github.ajalt.clikt.core.CliktCommand
 

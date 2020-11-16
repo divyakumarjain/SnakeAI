@@ -2,6 +2,7 @@ package org.divy.ai.snake.model.engine.qlearning
 
 import com.github.ajalt.clikt.parameters.options.OptionDelegate
 import com.github.ajalt.clikt.parameters.options.OptionWithValues
+import org.divy.ai.snake.application.command.AbstractLearningCommand
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 

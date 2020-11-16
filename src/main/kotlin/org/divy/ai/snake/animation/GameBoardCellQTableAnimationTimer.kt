@@ -4,41 +4,51 @@ import javafx.animation.AnimationTimer
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import org.divy.ai.snake.model.Position
-import org.divy.ai.snake.model.engine.qlearning.AbstractLearningCommand
+import org.divy.ai.snake.application.command.AbstractLearningCommand
 import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
 import org.divy.ai.snake.model.food.FoodEvent
 import org.divy.ai.snake.model.game.Event
 import org.divy.ai.snake.model.game.EventType
 import org.divy.ai.snake.model.game.GameEventListener
-import org.divy.ai.snake.model.snake.SnakeAction
-import org.divy.ai.snake.model.snake.SnakeVision
+import org.divy.ai.snake.model.snake.*
 import java.time.LocalDateTime
 import java.util.stream.LongStream.range
 
 class GameBoardCellQTableAnimationTimer(
     private val graphicsContext: GraphicsContext,
     private val qValueProvider: QValueProvider,
-    private val rlCommand: AbstractLearningCommand) : AnimationTimer(), GameEventListener {
+    private val rlCommand: AbstractLearningCommand
+) : AnimationTimer(), GameEventListener {
+
+
+    private var episode: Int = 0
     private val cachedQValue: MutableMap<Double, MutableMap<Double, MutableMap<SnakeAction, Double>>> = mutableMapOf()
     private var lastPaintTime: LocalDateTime? = null
-    private val snakeVision: SnakeVision = SnakeVision(snake = null, board = rlCommand.environment)
+    private val snakeVision: DirectionSnakeVision? = when {
+        rlCommand.useFourDirection -> FourDirectionSnakeVision(snake = null, board = rlCommand.environment)
+        rlCommand.useEightDirection -> EightDirectionSnakeVision(snake = null, board = rlCommand.environment)
+        else -> null
+    }
 
     var previousMaxQValue: Double = 0.0
     private val cellResolution: Double
         get() =  rlCommand.cellResolution
 
-
     override fun handle(now: Long) {
+        if(snakeVision!=null) {
+//            if(episode.rem(10.0) < 1.1)
+                if (isCacheValid()) {
+                    fullRePaintFromCache()
+                } else {
+                    val maxQValueInTable = fullRePaint( qValueProvider, snakeVision)
 
-        if (isCacheValid()) {
-            fullRePaintFromCache()
-        } else {
-            val maxQValueInTable = fullRePaint( qValueProvider)
+                    lastPaintTime = LocalDateTime.now()
 
-            lastPaintTime = LocalDateTime.now()
-
-            saveMaxQValueForNextIteration(maxQValueInTable)
+                    saveMaxQValueForNextIteration(maxQValueInTable)
+                }
         }
+
+
 
     }
 
@@ -71,7 +81,10 @@ class GameBoardCellQTableAnimationTimer(
         }
     }
 
-    private fun fullRePaint(qValueProvider: QValueProvider): Double {
+    private fun fullRePaint(
+        qValueProvider: QValueProvider,
+        snakeVision: DirectionSnakeVision
+    ): Double {
         var maxQValueInTable = Double.NEGATIVE_INFINITY
         for (cellX in range(0, rlCommand.environment.boardWidth)) {
             var cachedValuesForY: MutableMap<Double, MutableMap<SnakeAction, Double>>? = cachedQValue[cellX.toDouble()]
@@ -208,6 +221,7 @@ class GameBoardCellQTableAnimationTimer(
         if(event is FoodEvent && EventType.FOOD_EATEN.equals(event.type)) {
             lastPaintTime = null
         } else if (event is EpisodeCompleted) {
+            this.episode = event.episode
             lastPaintTime = null
         }
     }

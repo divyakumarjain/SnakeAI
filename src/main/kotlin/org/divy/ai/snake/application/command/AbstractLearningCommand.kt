@@ -1,12 +1,14 @@
-package org.divy.ai.snake.model.engine.qlearning
+package org.divy.ai.snake.application.command
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.float
 import com.github.ajalt.clikt.parameters.types.int
+import org.divy.ai.snake.model.engine.qlearning.modifiable
 import org.divy.ai.snake.model.food.FoodDropper
 import org.divy.ai.snake.model.game.GameBoardModel
 import kotlin.reflect.KProperty
@@ -80,7 +82,7 @@ abstract class AbstractLearningCommand(
 
     var randomFactor by option(help = "Random move selection factor").float().default(0.2f)
         .validate {
-            require(it > 0.0f && it <=1.0f) {
+            require(it in 0.0f..1.0f) {
                 "Random move selection should be between 0 and 1"
             }
         }.modifiable()
@@ -96,6 +98,16 @@ abstract class AbstractLearningCommand(
         .validate {
             require(it > 0) {
                 "Cell Resolution should be positive and non zero"
+            }
+        }.modifiable()
+
+    val useFourDirection: Boolean by option(help = "Buffer size for experience learning").flag()
+    val useEightDirection: Boolean by option(help = "Buffer size for experience learning").flag()
+
+    var randomDecay by option(help = "Random Decay rate").float().default(0.9999f)
+        .validate {
+            require(it > 0 && it <= 1) {
+                "Random Decay rate for experience learning should be positive and less then equal to 1"
             }
         }.modifiable()
 

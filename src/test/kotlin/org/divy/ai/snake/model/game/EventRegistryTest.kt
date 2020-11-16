@@ -12,7 +12,7 @@ class EventRegistryTest {
 
     @BeforeEach
     fun setup() {
-        registry = EventRegistry()
+        registry = EventRegistry.instance
     }
 
     @Test

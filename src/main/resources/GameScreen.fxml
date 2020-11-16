@@ -12,10 +12,10 @@
             prefHeight="400.0" prefWidth="600.0">
 
     <right>
-        <VBox fx:id="fromControl">
-            <VBox fx:id="controlPanel">
+        <VBox fx:id="fromControl" minWidth="200" >
+            <FlowPane fx:id="controlPanel" >
 
-            </VBox>
+            </FlowPane>
             <Button text="Submit" onMouseClicked="#submit"/>
         </VBox>
     </right>

@@ -3,7 +3,7 @@ package org.divy.ai.snake.model.game
 import java.util.*
 import kotlin.collections.ArrayList
 
-class EventRegistry constructor(private val parentEventRegistry: EventRegistry? = null) {
+class EventRegistry private constructor(private val parentEventRegistry: EventRegistry? = null) {
 
     private val registry: MutableMap<EventType, MutableList<GameEventListener>> = EnumMap(EventType::class.java)
 
@@ -23,6 +23,18 @@ class EventRegistry constructor(private val parentEventRegistry: EventRegistry? 
         if (listenerList != null) {
             if(listenerList.indexOf(listener) < 0)
                 listenerList.add(listener)
+        }
+    }
+
+    private object HOLDER {
+        val INSTANCE = EventRegistry()
+    }
+
+    companion object {
+        val instance: EventRegistry by lazy { HOLDER.INSTANCE }
+
+        fun createChildInstance(): EventRegistry {
+            return EventRegistry(HOLDER.INSTANCE)
         }
     }
 }

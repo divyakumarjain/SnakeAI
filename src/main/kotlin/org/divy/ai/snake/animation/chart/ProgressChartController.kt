@@ -2,9 +2,12 @@ package org.divy.ai.snake.animation.chart
 
 import javafx.application.Platform
 import javafx.fxml.FXML
+import javafx.scene.chart.CategoryAxis
 import javafx.scene.chart.LineChart
+import javafx.scene.chart.NumberAxis
 import javafx.scene.chart.XYChart
 import javafx.scene.chart.XYChart.Series
+import javafx.scene.layout.FlowPane
 import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
 import org.divy.ai.snake.model.game.Event
 import org.divy.ai.snake.model.game.EventType
@@ -22,75 +25,39 @@ class ProgressChartController(private val gameModel: GameBoardModel) : GameEvent
         gameModel.addEventListener(EventType.EPISODE_COMPLETED,this)
     }
 
-    @FXML
-    var scoreLineChart: LineChart<String, Number>? = null
+    private val scoreSeries: MutableMap<String, Series<String?, Number?>> = mutableMapOf()
 
     @FXML
-    var fitnessScoreLineChart: LineChart<String, Number>? = null
+    var flowPane: FlowPane? = null
 
-    private val averageScoreSeries = Series<String?, Number?>()
-    private val highScoreSeries = Series<String?, Number?>()
-    private val lowScoreSeries = Series<String?, Number?>()
+    fun updateData(xAxisValue: String, stats: Map<String, Number>) {
+        stats.forEach {
 
-    private val averageFitnessScoreSeries = Series<String?, Number?>()
-    private val highestFitnessScoreSeries = Series<String?, Number?>()
+            var series = scoreSeries[it.key]
 
-    fun initialize() {
+            if(series==null) {
+                series = Series()
+                scoreSeries[it.key] = series
+                val categoryAxis = CategoryAxis()
+                categoryAxis.label = "Episode"
+                val yAxis = NumberAxis()
+                yAxis.label = "Count"
+                val lineChart = LineChart(categoryAxis, yAxis)
+                lineChart.data.add(series)
+                lineChart.title = it.key
+                lineChart.minWidth = 900.0
+                lineChart.prefWidth = 1500.0
+                lineChart.minHeight = 450.0
 
-        averageScoreSeries.name= "Average Score"
-        highScoreSeries.name= "High Score"
-        lowScoreSeries.name= "Low Score"
+                flowPane?.children?.add(lineChart)
+            }
 
-        averageFitnessScoreSeries.name = "Average Fitness"
-        highestFitnessScoreSeries.name = "Highest Fitness"
+            cleanUpSeries(series)
 
-        scoreLineChart?.data?.add(averageScoreSeries)
-        scoreLineChart?.data?.add(highScoreSeries)
-        scoreLineChart?.data?.add(lowScoreSeries)
-
-        fitnessScoreLineChart?.data?.add(averageFitnessScoreSeries)
-        fitnessScoreLineChart?.data?.add(highestFitnessScoreSeries)
-    }
-
-    fun updateData() {
-        updateData(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")))
-    }
-
-    fun updateData(xAxisValue: String) {
-
-        cleanUpSeries(averageScoreSeries)
-        cleanUpSeries(highScoreSeries)
-        cleanUpSeries(lowScoreSeries)
-        cleanUpSeries(averageFitnessScoreSeries)
-        cleanUpSeries(highestFitnessScoreSeries)
-
-        averageScoreSeries.data.add(
-            XYChart.Data<String?, Number?>(
-                xAxisValue, gameModel.averageScore
-            )
-        )
-        highScoreSeries.data.add(
-            XYChart.Data<String?, Number?>(
-                xAxisValue, gameModel.highScore
-            )
-        )
-        lowScoreSeries.data.add(
-            XYChart.Data<String?, Number?>(
-                xAxisValue, gameModel.lowScore
-            )
-        )
-
-        averageFitnessScoreSeries.data.add(
-            XYChart.Data<String?, Number?>(
-                xAxisValue, gameModel.averageFitness
-            )
-        )
-
-        highestFitnessScoreSeries.data.add(
-            XYChart.Data<String?, Number?>(
-                xAxisValue, gameModel.highestFitness
-            )
-        )
+            series.data.add(            XYChart.Data<String?, Number?>(
+                xAxisValue, it.value
+            ))
+        }
     }
 
     private fun cleanUpSeries(series: Series<String?, Number?>) {
@@ -100,7 +67,7 @@ class ProgressChartController(private val gameModel: GameBoardModel) : GameEvent
 
     override fun handleEvent(event: Event) {
         if(event is EpisodeCompleted) {
-            updateData(event.episode.toString())
+            updateData(event.episode.toString(), event.stats)
         }
     }
 }
