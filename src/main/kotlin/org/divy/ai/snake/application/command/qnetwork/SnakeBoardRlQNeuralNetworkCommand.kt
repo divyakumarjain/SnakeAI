@@ -7,7 +7,7 @@ import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.int
 import javafx.animation.AnimationTimer
 import org.divy.ai.snake.animation.game.GameBoardAnimationFactoryImpl
-import org.divy.ai.snake.application.SnakeGameScreenImpl
+import org.divy.ai.snake.animation.game.SnakeGameScreenImpl
 import org.divy.ai.snake.application.command.AbstractLearningCommand
 import org.divy.ai.snake.model.engine.qlearning.EpisodeCompleted
 import org.divy.ai.snake.model.engine.qlearning.StepRewardCalculator

@@ -5,6 +5,6 @@ import org.divy.ai.snake.model.game.GameEventListener
 
 interface QNAlgorithm : QValueProvider, ActionProvider, GameEventListener {
 
-    abstract var randomActionCountInEpisode: Int
-    abstract var actionCountInEpisode: Int
+    var randomActionCountInEpisode: Int
+    var actionCountInEpisode: Int
 }
